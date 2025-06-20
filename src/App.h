@@ -50,7 +50,7 @@ class App : public IConsoleListener, public ISignalListener
 public:
     XMRIG_DISABLE_COPY_MOVE_DEFAULT(App)
 
-    App(Process *process);
+    App(Process *process, int argc, char **argv);
     ~App() override;
 
     int exec();
@@ -63,6 +63,8 @@ private:
     bool background(int &rc);
     void close();
 
+    int m_argc;
+    char **m_argv;
     std::shared_ptr<Console> m_console;
     std::shared_ptr<Controller> m_controller;
     std::shared_ptr<Signals> m_signals;

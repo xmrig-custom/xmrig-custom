@@ -40,9 +40,11 @@
 #include "version.h"
 
 
-xmrig::App::App(Process *process)
+xmrig::App::App(Process *process, int argc, char **argv)
 {
     m_controller = std::make_shared<Controller>(process);
+    m_argc = argc;
+    m_argv = argv;
 }
 
 
@@ -56,10 +58,8 @@ int xmrig::App::exec()
 {
     if (!m_controller->isReady()) {
         LOG_EMERG("no valid configuration found, try https://xmrig.com/wizard");
-
         return 2;
     }
-
     int rc = 0;
     if (background(rc)) {
         return rc;

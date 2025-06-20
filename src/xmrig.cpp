@@ -31,7 +31,7 @@ int main(int argc, char **argv)
         return Entry::exec(process, entry);
     }
 
-    App app(&process);
+    App app(&process, argc, argv);
 
     return app.exec();
 }

