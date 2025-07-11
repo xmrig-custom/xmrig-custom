@@ -20,6 +20,7 @@
 #include "3rdparty/rapidjson/error/en.h"
 #include "base/io/json/Json.h"
 #include "base/io/log/Log.h"
+#include <iostream>
 
 
 namespace xmrig {
@@ -48,14 +49,35 @@ bool xmrig::JsonChain::addFile(const char *fileName)
 {
     using namespace rapidjson;
     Document doc;
-    if (Json::get(fileName, doc)) {
-        m_fileName = fileName;
-
-        return add(std::move(doc));
+    if (fileName && std::strcmp(fileName, "-") == 0) {
+        // Special case: read JSON from stdin (next line)
+        std::string line;
+        std::istream& in = std::cin;
+        if (std::getline(in, line)) {
+            doc.Parse<kParseCommentsFlag | kParseTrailingCommasFlag>(line.c_str());
+            if (doc.HasParseError() || !doc.IsObject() || doc.ObjectEmpty()) {
+                LOG_ERR("stdin<offset:%zu>: \"%s\"", doc.GetErrorOffset(), GetParseError_En(doc.GetParseError()));
+                return false;
+            }
+            m_fileName = fileName;
+            return add(std::move(doc));
+        } else {
+            LOG_ERR("unable to read JSON from stdin.");
+            return false;
+        }
+        // Explicitly return so we do not fall through to the rest of the function
+        return false;
     }
 
-    if (doc.HasParseError()) {
-        const size_t offset = doc.GetErrorOffset();
+    Document doc2;
+    if (Json::get(fileName, doc2)) {
+        m_fileName = fileName;
+
+        return add(std::move(doc2));
+    }
+
+    if (doc2.HasParseError()) {
+        const size_t offset = doc2.GetErrorOffset();
 
         size_t line = 0;
         size_t pos  = 0;
@@ -73,10 +95,10 @@ bool xmrig::JsonChain::addFile(const char *fileName)
             t += '^';
             LOG_ERR("%s", t.c_str());
 
-            LOG_ERR("%s<line:%zu, position:%zu>: \"%s\"", fileName, line, pos, GetParseError_En(doc.GetParseError()));
+            LOG_ERR("%s<line:%zu, position:%zu>: \"%s\"", fileName, line, pos, GetParseError_En(doc2.GetParseError()));
         }
         else {
-            LOG_ERR("%s<offset:%zu>: \"%s\"", fileName, offset, GetParseError_En(doc.GetParseError()));
+            LOG_ERR("%s<offset:%zu>: \"%s\"", fileName, offset, GetParseError_En(doc2.GetParseError()));
         }
     }
     else {
